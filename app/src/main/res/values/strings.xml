@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EduCRM Pro</string>
+    <string name="splash_tagline">Education Management Suite</string>
+    <string name="error_title">Unable to load page</string>
+    <string name="error_message">Please check your connection and try again.</string>
+    <string name="retry">Retry</string>
+</resources>

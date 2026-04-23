@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schedule – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  let editingId = null;
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  function render() {
+    const list = DB.schedule.all();
+    const groups = DB.groups.all();
+    const gmap = Object.fromEntries(groups.map(g=>[g.id,g.name]));
+    const byDay = {};
+    days.forEach(d=>byDay[d]=[]);
+    list.forEach(s=>{ if(byDay[s.day]) byDay[s.day].push(s); });
+    Object.values(byDay).forEach(arr => arr.sort((a,b)=>(a.time||'').localeCompare(b.time||'')));
+
+    root.innerHTML = `
+      ${UI.topbar('Schedule')}
+      <div class="container">
+        ${UI.pageHead('Weekly schedule','<button class="btn primary sm" onclick="showForm()">+ Add</button>')}
+        ${days.map(d=>`<div class="card"><h3>${d}</h3>
+          ${byDay[d].length?'<ul class="list">'+byDay[d].map(s=>`<li>
+            <div><div class="title">${s.time||''} • ${UI.escape(gmap[s.groupId]||'?')}</div>
+              <div class="sub">Room ${UI.escape(s.room||'-')}</div></div>
+            <div class="actions">
+              <button class="btn ghost sm" onclick="editS('${s.id}')">Edit</button>
+              <button class="btn danger sm" onclick="delS('${s.id}')">Del</button>
+            </div></li>`).join('')+'</ul>':'<div class="empty" style="padding:14px">No classes</div>'}
+        </div>`).join('')}
+
+        <div class="card" id="formCard" style="display:none">
+          <h3 id="formTitle">New schedule item</h3>
+          <form id="sform">
+            <div class="form-row"><label>Group</label>
+              <select name="groupId" required>
+                ${groups.map(g=>`<option value="${g.id}">${UI.escape(g.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="row">
+              <div class="form-row"><label>Day</label>
+                <select name="day">${days.map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+              </div>
+              <div class="form-row"><label>Time</label><input class="input" name="time" type="time" required></div>
+            </div>
+            <div class="form-row"><label>Room</label><input class="input" name="room"></div>
+            <div class="row">
+              <button class="btn ghost" type="button" onclick="hideForm()">Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      ${UI.bottomnav('schedule')}
+    `;
+    document.getElementById('sform').addEventListener('submit', function(e){
+      e.preventDefault();
+      const obj = Object.fromEntries(new FormData(this).entries());
+      if (editingId) DB.schedule.update(editingId,obj); else DB.schedule.add(obj);
+      editingId = null; render();
+    });
+  }
+  window.showForm=()=>{document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='New schedule item';document.getElementById('sform').reset();editingId=null;window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});};
+  window.hideForm=()=>{document.getElementById('formCard').style.display='none';editingId=null;};
+  window.editS=(id)=>{const s=DB.schedule.get(id);if(!s)return;editingId=id;document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='Edit schedule item';const f=document.getElementById('sform');f.groupId.value=s.groupId||'';f.day.value=s.day||'Mon';f.time.value=s.time||'';f.room.value=s.room||'';window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});};
+  window.delS=(id)=>UI.confirmDelete('Delete schedule item?',()=>{DB.schedule.remove(id);render();});
+  render();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Teachers – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  let editingId = null;
+  function render() {
+    const list = DB.teachers.all();
+    root.innerHTML = `
+      ${UI.topbar('Teachers')}
+      <div class="container">
+        ${UI.pageHead('All teachers', '<button class="btn primary sm" onclick="showForm()">+ Add</button>')}
+        <ul class="list">
+          ${list.length ? list.map(t=>`<li>
+            <div><div class="title">${UI.escape(t.name)}</div>
+              <div class="sub">${UI.escape(t.subject||'')} • ${UI.escape(t.phone||'')}</div></div>
+            <div class="actions">
+              <button class="btn ghost sm" onclick="editT('${t.id}')">Edit</button>
+              <button class="btn danger sm" onclick="delT('${t.id}')">Del</button>
+            </div></li>`).join('') : '<li class="empty">No teachers yet</li>'}
+        </ul>
+
+        <div class="card" id="formCard" style="display:none">
+          <h3 id="formTitle">New teacher</h3>
+          <form id="tform">
+            <div class="form-row"><label>Name</label><input class="input" name="name" required></div>
+            <div class="form-row"><label>Subject</label><input class="input" name="subject"></div>
+            <div class="row">
+              <div class="form-row"><label>Phone</label><input class="input" name="phone"></div>
+              <div class="form-row"><label>Email</label><input class="input" name="email" type="email"></div>
+            </div>
+            <div class="row">
+              <button class="btn ghost" type="button" onclick="hideForm()">Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      ${UI.bottomnav('')}
+    `;
+    document.getElementById('tform').addEventListener('submit', function(e){
+      e.preventDefault();
+      const obj = Object.fromEntries(new FormData(this).entries());
+      if (editingId) DB.teachers.update(editingId, obj); else DB.teachers.add(obj);
+      editingId = null; render();
+    });
+  }
+  window.showForm=()=>{document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='New teacher';document.getElementById('tform').reset();editingId=null;};
+  window.hideForm=()=>{document.getElementById('formCard').style.display='none';editingId=null;};
+  window.editT=(id)=>{const t=DB.teachers.get(id);if(!t)return;editingId=id;document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='Edit teacher';const f=document.getElementById('tform');f.name.value=t.name||'';f.subject.value=t.subject||'';f.phone.value=t.phone||'';f.email.value=t.email||'';window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});};
+  window.delT=(id)=>UI.confirmDelete('Delete teacher?',()=>{DB.teachers.remove(id);render();});
+  render();
+}
+</script>
+</body>
+</html>

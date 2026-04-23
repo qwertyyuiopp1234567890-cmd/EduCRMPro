@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Courses – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  let editingId = null;
+  function render() {
+    const list = DB.courses.all();
+    const teachers = DB.teachers.all();
+    const tmap = Object.fromEntries(teachers.map(t=>[t.id,t.name]));
+    root.innerHTML = `
+      ${UI.topbar('Courses')}
+      <div class="container">
+        ${UI.pageHead('All courses','<button class="btn primary sm" onclick="showForm()">+ Add</button>')}
+        <ul class="list">
+          ${list.length ? list.map(c=>`<li>
+            <div><div class="title">${UI.escape(c.title)}</div>
+              <div class="sub">${UI.escape(tmap[c.teacherId]||'No teacher')} • ${c.durationWeeks||0} wks</div></div>
+            <div class="actions">
+              <span class="badge blue">${UI.fmtMoney(c.fee)}</span>
+              <button class="btn ghost sm" onclick="editC('${c.id}')">Edit</button>
+              <button class="btn danger sm" onclick="delC('${c.id}')">Del</button>
+            </div></li>`).join('') : '<li class="empty">No courses yet</li>'}
+        </ul>
+
+        <div class="card" id="formCard" style="display:none">
+          <h3 id="formTitle">New course</h3>
+          <form id="cform">
+            <div class="form-row"><label>Title</label><input class="input" name="title" required></div>
+            <div class="form-row"><label>Teacher</label>
+              <select name="teacherId"><option value="">—</option>
+                ${teachers.map(t=>`<option value="${t.id}">${UI.escape(t.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="row">
+              <div class="form-row"><label>Fee ($)</label><input class="input" name="fee" type="number" min="0" step="0.01"></div>
+              <div class="form-row"><label>Weeks</label><input class="input" name="durationWeeks" type="number" min="1"></div>
+            </div>
+            <div class="row">
+              <button class="btn ghost" type="button" onclick="hideForm()">Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      ${UI.bottomnav('')}
+    `;
+    document.getElementById('cform').addEventListener('submit', function(e){
+      e.preventDefault();
+      const obj = Object.fromEntries(new FormData(this).entries());
+      obj.fee = obj.fee?Number(obj.fee):0;
+      obj.durationWeeks = obj.durationWeeks?Number(obj.durationWeeks):0;
+      if (editingId) DB.courses.update(editingId,obj); else DB.courses.add(obj);
+      editingId = null; render();
+    });
+  }
+  window.showForm=()=>{document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='New course';document.getElementById('cform').reset();editingId=null;};
+  window.hideForm=()=>{document.getElementById('formCard').style.display='none';editingId=null;};
+  window.editC=(id)=>{const c=DB.courses.get(id);if(!c)return;editingId=id;document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='Edit course';const f=document.getElementById('cform');f.title.value=c.title||'';f.teacherId.value=c.teacherId||'';f.fee.value=c.fee||0;f.durationWeeks.value=c.durationWeeks||0;window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});};
+  window.delC=(id)=>UI.confirmDelete('Delete course?',()=>{DB.courses.remove(id);render();});
+  render();
+}
+</script>
+</body>
+</html>

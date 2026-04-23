@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Groups – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  let editingId = null;
+  function render() {
+    const groups = DB.groups.all();
+    const courses = DB.courses.all();
+    const students = DB.students.all();
+    const cmap = Object.fromEntries(courses.map(c=>[c.id,c.title]));
+    const smap = Object.fromEntries(students.map(s=>[s.id,s.name]));
+    root.innerHTML = `
+      ${UI.topbar('Groups')}
+      <div class="container">
+        ${UI.pageHead('Class groups','<button class="btn primary sm" onclick="showForm()">+ Add</button>')}
+        <ul class="list">
+          ${groups.length?groups.map(g=>`<li>
+            <div><div class="title">${UI.escape(g.name)}</div>
+              <div class="sub">${UI.escape(cmap[g.courseId]||'No course')} • ${(g.studentIds||[]).length} students</div>
+              <div class="sub">${(g.studentIds||[]).map(id=>UI.escape(smap[id]||'?')).join(', ')}</div></div>
+            <div class="actions">
+              <button class="btn ghost sm" onclick="editG('${g.id}')">Edit</button>
+              <button class="btn danger sm" onclick="delG('${g.id}')">Del</button>
+            </div></li>`).join(''):'<li class="empty">No groups yet</li>'}
+        </ul>
+
+        <div class="card" id="formCard" style="display:none">
+          <h3 id="formTitle">New group</h3>
+          <form id="gform">
+            <div class="form-row"><label>Name</label><input class="input" name="name" required></div>
+            <div class="form-row"><label>Course</label>
+              <select name="courseId"><option value="">—</option>
+                ${courses.map(c=>`<option value="${c.id}">${UI.escape(c.title)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-row"><label>Students (Ctrl/Cmd-click to multi-select)</label>
+              <select name="studentIds" multiple size="6">
+                ${students.map(s=>`<option value="${s.id}">${UI.escape(s.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="row">
+              <button class="btn ghost" type="button" onclick="hideForm()">Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      ${UI.bottomnav('')}
+    `;
+    document.getElementById('gform').addEventListener('submit', function(e){
+      e.preventDefault();
+      const f = e.target;
+      const sel = Array.from(f.studentIds.selectedOptions).map(o=>o.value);
+      const obj = { name: f.name.value, courseId: f.courseId.value, studentIds: sel };
+      if (editingId) DB.groups.update(editingId,obj); else DB.groups.add(obj);
+      editingId = null; render();
+    });
+  }
+  window.showForm=()=>{document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='New group';document.getElementById('gform').reset();editingId=null;};
+  window.hideForm=()=>{document.getElementById('formCard').style.display='none';editingId=null;};
+  window.editG=(id)=>{const g=DB.groups.get(id);if(!g)return;editingId=id;document.getElementById('formCard').style.display='block';document.getElementById('formTitle').textContent='Edit group';const f=document.getElementById('gform');f.name.value=g.name||'';f.courseId.value=g.courseId||'';Array.from(f.studentIds.options).forEach(o=>o.selected=(g.studentIds||[]).includes(o.value));window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});};
+  window.delG=(id)=>UI.confirmDelete('Delete group?',()=>{DB.groups.remove(id);render();});
+  render();
+}
+</script>
+</body>
+</html>

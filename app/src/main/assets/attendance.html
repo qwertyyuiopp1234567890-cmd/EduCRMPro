@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Attendance – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  function render() {
+    const groups = DB.groups.all();
+    const students = DB.students.all();
+    const att = DB.attendance.all();
+    const smap = Object.fromEntries(students.map(s=>[s.id,s.name]));
+    const date = (window.__date) || UI.todayStr();
+    const groupId = window.__group || (groups[0] && groups[0].id) || '';
+    const group = groups.find(g=>g.id===groupId);
+    const ids = group ? (group.studentIds||[]) : [];
+
+    root.innerHTML = `
+      ${UI.topbar('Attendance')}
+      <div class="container">
+        ${UI.pageHead('Mark attendance','')}
+        <div class="card">
+          <div class="row">
+            <div class="form-row"><label>Date</label>
+              <input class="input" id="date" type="date" value="${date}"></div>
+            <div class="form-row"><label>Group</label>
+              <select id="group">
+                ${groups.map(g=>`<option value="${g.id}" ${g.id===groupId?'selected':''}>${UI.escape(g.name)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <ul class="list" id="alist">
+          ${ids.length?ids.map(sid=>{
+            const rec = att.find(a=>a.date===date && a.groupId===groupId && a.studentId===sid);
+            const status = rec?rec.status:'';
+            return `<li>
+              <div><div class="title">${UI.escape(smap[sid]||'?')}</div>
+                <div class="sub">${status?('Marked: '+status):'Not marked'}</div></div>
+              <div class="actions">
+                <button class="btn ${status==='present'?'primary':'ghost'} sm" onclick="mark('${sid}','present')">P</button>
+                <button class="btn ${status==='absent'?'danger':'ghost'} sm" onclick="mark('${sid}','absent')">A</button>
+                <button class="btn ${status==='late'?'primary':'ghost'} sm" onclick="mark('${sid}','late')">L</button>
+              </div></li>`;
+          }).join(''):'<li class="empty">Group has no students</li>'}
+        </ul>
+
+        <div class="card">
+          <h3>Recent records</h3>
+          <ul class="list">
+            ${att.slice(-6).reverse().map(a=>`<li>
+              <div><div class="title">${UI.escape(smap[a.studentId]||'?')}</div>
+                <div class="sub">${a.date} • ${UI.escape((groups.find(g=>g.id===a.groupId)||{}).name||'')}</div></div>
+              <span class="badge ${a.status==='present'?'green':a.status==='absent'?'red':'amber'}">${a.status}</span>
+              </li>`).join('') || '<li class="empty">No records yet</li>'}
+          </ul>
+        </div>
+      </div>
+      ${UI.bottomnav('attendance')}
+    `;
+    document.getElementById('date').addEventListener('change', e=>{ window.__date=e.target.value; render(); });
+    document.getElementById('group').addEventListener('change', e=>{ window.__group=e.target.value; render(); });
+  }
+  window.mark = function(studentId, status){
+    const date = window.__date || UI.todayStr();
+    const groupId = window.__group || (DB.groups.all()[0]||{}).id;
+    const existing = DB.attendance.all().find(a=>a.date===date&&a.groupId===groupId&&a.studentId===studentId);
+    if (existing) DB.attendance.update(existing.id,{status});
+    else DB.attendance.add({date,groupId,studentId,status});
+    render();
+  };
+  render();
+}
+</script>
+</body>
+</html>

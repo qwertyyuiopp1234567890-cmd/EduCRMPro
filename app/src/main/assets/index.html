@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EduCRM Pro – Sign in</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="mark">EC</div>
+      <h1>EduCRM Pro</h1>
+      <p>Education Management Suite</p>
+    </div>
+    <form id="loginForm">
+      <div class="form-row">
+        <label for="email">Email</label>
+        <input class="input" id="email" type="email" required value="admin@educrm.app">
+      </div>
+      <div class="form-row">
+        <label for="password">Password</label>
+        <input class="input" id="password" type="password" required value="admin123">
+      </div>
+      <button class="btn primary full" type="submit">Sign in</button>
+      <p class="hint">Default: admin@educrm.app / admin123</p>
+    </form>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+  if (Auth.current()) location.replace('dashboard.html');
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const pw = document.getElementById('password').value;
+    const res = Auth.login(email, pw);
+    if (res.ok) location.href = 'dashboard.html';
+    else alert(res.error);
+  });
+</script>
+</body>
+</html>

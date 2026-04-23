@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Students – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+if (Auth.requireAuth()) {
+  const root = document.getElementById('app');
+  let editingId = null;
+
+  function render() {
+    const list = DB.students.all();
+    root.innerHTML = `
+      ${UI.topbar('Students')}
+      <div class="container">
+        ${UI.pageHead('All students', '<button class="btn primary sm" onclick="showForm()">+ Add</button>')}
+        <input class="input search" id="q" placeholder="Search students…">
+        <ul class="list" id="slist"></ul>
+
+        <div class="card" id="formCard" style="display:none">
+          <h3 id="formTitle">New student</h3>
+          <form id="sform">
+            <div class="form-row"><label>Name</label><input class="input" name="name" required></div>
+            <div class="row">
+              <div class="form-row"><label>Age</label><input class="input" name="age" type="number" min="1"></div>
+              <div class="form-row"><label>Phone</label><input class="input" name="phone"></div>
+            </div>
+            <div class="form-row"><label>Email</label><input class="input" name="email" type="email"></div>
+            <div class="form-row"><label>Parent / Guardian</label><input class="input" name="parent"></div>
+            <div class="row">
+              <button class="btn ghost" type="button" onclick="hideForm()">Cancel</button>
+              <button class="btn primary" type="submit">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      ${UI.bottomnav('students')}
+    `;
+    const ul = document.getElementById('slist');
+    const q = document.getElementById('q');
+    function paint() {
+      const term = (q.value||'').toLowerCase();
+      const items = list.filter(s => !term || (s.name+' '+(s.email||'')+' '+(s.phone||'')).toLowerCase().includes(term));
+      ul.innerHTML = items.length
+        ? items.map(s=>`<li>
+            <div><div class="title">${UI.escape(s.name)}</div>
+              <div class="sub">${UI.escape(s.email||'')} • ${UI.escape(s.phone||'')}</div></div>
+            <div class="actions">
+              <button class="btn ghost sm" onclick="editStudent('${s.id}')">Edit</button>
+              <button class="btn danger sm" onclick="delStudent('${s.id}')">Del</button>
+            </div></li>`).join('')
+        : '<li class="empty">No students found</li>';
+    }
+    q.addEventListener('input', paint); paint();
+
+    document.getElementById('sform').addEventListener('submit', function(e){
+      e.preventDefault();
+      const fd = new FormData(this);
+      const obj = Object.fromEntries(fd.entries());
+      obj.age = obj.age ? Number(obj.age) : null;
+      if (editingId) DB.students.update(editingId, obj); else DB.students.add(obj);
+      editingId = null; render();
+    });
+  }
+  window.showForm = function(){ document.getElementById('formCard').style.display='block'; document.getElementById('formTitle').textContent='New student'; document.getElementById('sform').reset(); editingId=null; };
+  window.hideForm = function(){ document.getElementById('formCard').style.display='none'; editingId=null; };
+  window.editStudent = function(id){
+    const s = DB.students.get(id); if (!s) return;
+    editingId = id;
+    document.getElementById('formCard').style.display='block';
+    document.getElementById('formTitle').textContent='Edit student';
+    const f = document.getElementById('sform');
+    f.name.value=s.name||''; f.age.value=s.age||''; f.phone.value=s.phone||''; f.email.value=s.email||''; f.parent.value=s.parent||'';
+    window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+  };
+  window.delStudent = function(id){ UI.confirmDelete('Delete this student?', ()=>{ DB.students.remove(id); render(); }); };
+  render();
+}
+</script>
+</body>
+</html>

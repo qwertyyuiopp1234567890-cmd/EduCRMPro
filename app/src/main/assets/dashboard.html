@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dashboard – EduCRM Pro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+  if (!Auth.requireAuth()) {} else {
+    const students = DB.students.all();
+    const teachers = DB.teachers.all();
+    const courses  = DB.courses.all();
+    const groups   = DB.groups.all();
+    const payments = DB.payments.all();
+    const totalRevenue = payments.filter(p=>p.status==='paid').reduce((a,b)=>a+Number(b.amount||0),0);
+    const pending = payments.filter(p=>p.status==='pending').reduce((a,b)=>a+Number(b.amount||0),0);
+
+    document.getElementById('app').innerHTML = `
+      ${UI.topbar('Dashboard')}
+      <div class="container">
+        <div class="stats">
+          <div class="stat"><div class="label">Students</div><div class="value">${students.length}</div><div class="meta">Total enrolled</div></div>
+          <div class="stat"><div class="label">Teachers</div><div class="value">${teachers.length}</div><div class="meta">Active staff</div></div>
+          <div class="stat"><div class="label">Courses</div><div class="value">${courses.length}</div><div class="meta">${groups.length} groups</div></div>
+          <div class="stat"><div class="label">Revenue</div><div class="value">${UI.fmtMoney(totalRevenue)}</div><div class="meta">${UI.fmtMoney(pending)} pending</div></div>
+        </div>
+
+        <div class="quick">
+          <a href="students.html"><span class="icon">🎓</span>Students</a>
+          <a href="teachers.html"><span class="icon">👩‍🏫</span>Teachers</a>
+          <a href="courses.html"><span class="icon">📚</span>Courses</a>
+          <a href="groups.html"><span class="icon">👥</span>Groups</a>
+          <a href="attendance.html"><span class="icon">✅</span>Attendance</a>
+          <a href="payments.html"><span class="icon">💳</span>Payments</a>
+        </div>
+
+        <div class="card">
+          <h3>Recent students</h3>
+          <ul class="list">
+            ${students.slice(-3).reverse().map(s=>`<li><div><div class="title">${UI.escape(s.name)}</div><div class="sub">${UI.escape(s.email||'')}</div></div><span class="badge blue">Age ${s.age||'-'}</span></li>`).join('') || '<li class="empty">No students yet</li>'}
+          </ul>
+        </div>
+      </div>
+      ${UI.bottomnav('dashboard')}
+    `;
+  }
+</script>
+</body>
+</html>
